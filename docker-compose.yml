@@ -1,0 +1,45 @@
+services:
+  bot:
+    build: .
+    container_name: coffeestore_bot
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-coffeestore_bot}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - ADMIN_IDS=${ADMIN_IDS}
+      - DEFAULT_CNY_RATE=${DEFAULT_CNY_RATE:-12.5}
+      - DEFAULT_DELIVERY_COST_PER_KG=${DEFAULT_DELIVERY_COST_PER_KG:-350}
+    networks:
+      - coffeestore_network
+
+  db:
+    image: postgres:16-alpine
+    container_name: coffeestore_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_NAME:-coffeestore_bot}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-coffeestore_bot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - coffeestore_network
+
+networks:
+  coffeestore_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
