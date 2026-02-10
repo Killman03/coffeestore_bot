@@ -1,4 +1,10 @@
 import asyncio
+import sys
+from pathlib import Path
+
+# Project root (parent of alembic dir) so config and database are importable when running alembic CLI
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from logging.config import fileConfig
 
 from sqlalchemy import pool
