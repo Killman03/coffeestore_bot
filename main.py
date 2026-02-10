@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 from config import settings
 from database import init_db, dispose_db
 from bot.middlewares import DatabaseMiddleware, UserMiddleware
-from bot.handlers import common, products, supply, sales, finance, reports
+from bot.handlers import common, products, supply, sales, finance, reports, warehouse
 
 # Configure logging
 logging.basicConfig(
@@ -56,7 +56,8 @@ async def main():
     dp.include_router(sales.router)
     dp.include_router(finance.router)
     dp.include_router(reports.router)
-    
+    dp.include_router(warehouse.router)
+
     # Initialize database with retry logic
     await init_database_with_retry()
     

@@ -93,3 +93,10 @@ class ViewSalesStates(StatesGroup):
     viewing_sales = State()
     confirming_delete = State()
 
+
+class TakeFromWarehouseStates(StatesGroup):
+    """States for recording seller take from warehouse."""
+    waiting_for_seller = State()
+    waiting_for_product = State()
+    waiting_for_quantity = State()
+

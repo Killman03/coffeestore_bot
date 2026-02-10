@@ -158,3 +158,21 @@ def get_sale_keyboard(sale_id: int) -> InlineKeyboardMarkup:
     builder.button(text="🗑️ Удалить", callback_data=f"delete_sale_{sale_id}")
     return builder.as_markup()
 
+
+def get_warehouse_stock_keyboard() -> InlineKeyboardMarkup:
+    """Inline keyboard for warehouse actions: issue and seller balances."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📤 Выдать со склада", callback_data="warehouse_issue_start")
+    builder.button(text="👥 Остатки у продавцов", callback_data="warehouse_seller_balances")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def get_quantity_quick_keyboard() -> InlineKeyboardMarkup:
+    """Quick quantity buttons for warehouse issue."""
+    builder = InlineKeyboardBuilder()
+    for qty in (1, 2, 5, 10):
+        builder.button(text=str(qty), callback_data=f"issue_qty_{qty}")
+    builder.adjust(2)
+    return builder.as_markup()
+

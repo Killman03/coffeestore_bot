@@ -20,6 +20,7 @@ from bot.keyboards import (
 from services.sale_service import SaleService
 from services.product_service import ProductService
 from services.user_service import UserService
+from services.warehouse_issue_service import WarehouseIssueService
 from database.models import User, Sale
 
 router = Router()
@@ -177,18 +178,9 @@ async def quick_add_sale(message: Message, session: AsyncSession, user: User, st
         return
     product = products[0]
 
-    # Check stock
-    stock = await ProductService.get_product_stock(session, product.id)
-    if qty > stock:
-        await message.answer(
-            f"❌ Недостаточно товара на складе. Доступно: {stock} шт."
-        )
-        return
-
     # Determine seller from Telegram user
     seller_id = user.id if user else None
     if not seller_id:
-        # Fallback: get or create by telegram id
         tg = message.from_user
         u = await UserService.get_or_create_user(
             session,
@@ -198,6 +190,20 @@ async def quick_add_sale(message: Message, session: AsyncSession, user: User, st
             last_name=tg.last_name,
         )
         seller_id = u.id
+
+    # Продавец может продать только то, что у него на руках (выдано − уже проданное)
+    seller_balance = await WarehouseIssueService.get_seller_balance(
+        session, seller_id, product.id
+    )
+    if qty > seller_balance:
+        await message.answer(
+            f"❌ У вас недостаточно товара <b>{product.name}</b>.\n"
+            f"Остаток у вас: <b>{seller_balance} шт.</b>\n\n"
+            "Сначала оформите выдачу со склада: 📊 Склад → 📤 Выдать со склада\n"
+            f"Или быстрый ввод: <code>взять {product.name} {qty}</code>",
+            parse_mode="HTML",
+        )
+        return
 
     sales = await SaleService.create_sale(
         session,
@@ -295,17 +301,37 @@ async def process_sale_seller(callback: CallbackQuery, state: FSMContext, sessio
     """Process seller selection."""
     seller_id = int(callback.data.split("_")[1])
     data = await state.get_data()
-    
-    # Create sale
+    quantity = data["quantity"]
+    product_id = data["product_id"]
+    product_name = data["product_name"]
+
+    # Продавец может продать только то, что у него на руках
+    seller_balance = await WarehouseIssueService.get_seller_balance(
+        session, seller_id, product_id
+    )
+    if quantity > seller_balance:
+        seller_result = await session.execute(select(User).where(User.id == seller_id))
+        seller = seller_result.scalar_one_or_none()
+        seller_name = seller.full_name if seller else "продавца"
+        await callback.message.edit_text(
+            f"❌ У {seller_name} недостаточно товара <b>{product_name}</b>.\n"
+            f"Остаток у продавца: <b>{seller_balance} шт.</b>, нужно: {quantity} шт.\n\n"
+            "Сначала оформите выдачу со склада: 📊 Склад → 📤 Выдать со склада.",
+            parse_mode="HTML",
+        )
+        await state.clear()
+        await callback.answer()
+        return
+
     sales = await SaleService.create_sale(
         session,
-        product_id=data["product_id"],
+        product_id=product_id,
         seller_id=seller_id,
-        quantity=data["quantity"],
+        quantity=quantity,
         sale_price=data["sale_price"],
         sale_date=datetime.now(),
     )
-    
+
     if not sales:
         await callback.message.edit_text(
             "❌ Ошибка при создании продажи!\n"

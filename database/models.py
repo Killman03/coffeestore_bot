@@ -30,6 +30,7 @@ class User(Base):
     
     # Relationships
     sales: Mapped[List["Sale"]] = relationship("Sale", back_populates="seller")
+    warehouse_issues: Mapped[List["WarehouseIssue"]] = relationship("WarehouseIssue", back_populates="seller")
     
     def __repr__(self) -> str:
         return f"<User(id={self.id}, telegram_id={self.telegram_id}, name='{self.full_name}')>"
@@ -55,6 +56,7 @@ class Product(Base):
     # Relationships
     supply_items: Mapped[List["SupplyOrderItem"]] = relationship("SupplyOrderItem", back_populates="product")
     sales: Mapped[List["Sale"]] = relationship("Sale", back_populates="product")
+    warehouse_issues: Mapped[List["WarehouseIssue"]] = relationship("WarehouseIssue", back_populates="product")
     
     def calculate_cost(self, cny_rate: Decimal, delivery_cost_per_kg: Decimal) -> Decimal:
         """Calculate product cost in local currency."""
@@ -126,6 +128,24 @@ class SupplyOrderItem(Base):
     
     def __repr__(self) -> str:
         return f"<SupplyOrderItem(id={self.id}, product_id={self.product_id}, qty={self.quantity})>"
+
+
+class WarehouseIssue(Base):
+    """Record of a seller taking product from warehouse."""
+    __tablename__ = "warehouse_issues"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    seller_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    seller: Mapped["User"] = relationship("User", back_populates="warehouse_issues")
+    product: Mapped["Product"] = relationship("Product", back_populates="warehouse_issues")
+    
+    def __repr__(self) -> str:
+        return f"<WarehouseIssue(id={self.id}, seller_id={self.seller_id}, product_id={self.product_id}, qty={self.quantity})>"
 
 
 class Sale(Base):

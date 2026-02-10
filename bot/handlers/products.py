@@ -324,23 +324,26 @@ async def process_delete_product_confirm(callback: CallbackQuery, state: FSMCont
 @router.message(Command("stock"))
 @router.message(F.text == "📊 Склад")
 async def cmd_stock(message: Message, session: AsyncSession):
-    """Show stock levels."""
+    """Show stock levels and warehouse actions."""
+    from bot.keyboards import get_warehouse_stock_keyboard
+
     products_with_stock = await ProductService.get_products_with_stock_summary(session)
-    
+
     if not products_with_stock:
         await message.answer(
             "📊 Склад пуст.\n"
-            "Используйте /new_supply для создания заказа."
+            "Используйте /new_supply для создания заказа.",
+            reply_markup=get_warehouse_stock_keyboard(),
         )
         return
-    
+
     text = "📊 <b>Остатки на складе:</b>\n\n"
     total_items = 0
     total_stock_value = Decimal("0")
 
     def format_currency(value: Decimal) -> str:
         return f"{value:,.2f}".replace(",", " ")
-    
+
     for product, stock, stock_value in products_with_stock:
         stock_emoji = "✅" if stock > 10 else "⚠️" if stock > 0 else "❌"
         lines = [
@@ -353,11 +356,15 @@ async def cmd_stock(message: Message, session: AsyncSession):
         text += "\n".join(lines) + "\n\n"
         total_items += stock
         total_stock_value += stock_value
-    
+
     text += (
         f"📦 <b>Всего товаров:</b> {total_items} шт.\n"
         f"💰 <b>Стоимость склада:</b> {format_currency(total_stock_value)} сом"
     )
-    
-    await message.answer(text, parse_mode="HTML")
+
+    await message.answer(
+        text,
+        parse_mode="HTML",
+        reply_markup=get_warehouse_stock_keyboard(),
+    )
 
